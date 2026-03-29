@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  NGO
+  VOLUNTEER
+  VICTIM
+}
+
+enum ResourceType {
+  FOOD
+  WATER
+  MEDICINE
+}
+
+enum RequestStatus {
+  PENDING
+  DISPATCHED
+  FULFILLED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         Role         @default(VICTIM)
+  phone        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  aidRequests  AidRequest[]
+}
+
+model Resource {
+  id        String       @id @default(cuid())
+  type      ResourceType @unique
+  quantity  Int
+  unit      String
+  location  String?
+  updatedAt DateTime     @updatedAt
+}
+
+model AidRequest {
+  id             String        @id @default(cuid())
+  requestedById  String
+  requestedBy    User          @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  resourceType   ResourceType
+  quantityNeeded Int
+  latitude       Float
+  longitude      Float
+  locationName   String?
+  urgency        Int           @default(3)
+  status         RequestStatus @default(PENDING)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
