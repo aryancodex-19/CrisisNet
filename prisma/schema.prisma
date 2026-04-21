@@ -71,6 +71,9 @@ model InventoryLog {
   performedById  String
   performedBy    User         @relation(fields: [performedById], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([resourceId])
 }
 
 model AidRequest {
@@ -87,4 +90,10 @@ model AidRequest {
   notes          String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([urgency, createdAt(sort: Desc)])
+  @@index([resourceType])
 }
+

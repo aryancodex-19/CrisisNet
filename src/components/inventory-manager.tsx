@@ -33,7 +33,6 @@ import {
   History,
   PackagePlus,
   TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ResourceType, ChangeType } from "@prisma/client";

@@ -1,5 +1,4 @@
 import { getResources, getInventoryLogs } from "@/app/actions/resources";
-import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,7 +26,6 @@ export default async function ResourcesPage() {
     getResources(),
     getInventoryLogs(50),
   ]);
-  const session = await auth();
 
   const typeDetails: Record<string, { icon: typeof Package; color: string; maxQty: number }> = {
     FOOD: { icon: UtensilsCrossed, color: "from-amber-500 to-orange-500", maxQty: 500 },
