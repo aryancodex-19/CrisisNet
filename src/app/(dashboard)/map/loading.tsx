@@ -9,7 +9,7 @@ export default function MapLoading() {
           Transparency Map
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Live view of all aid requests across Mumbai
+          Live view of all aid requests across Bombay
         </p>
       </div>
 
