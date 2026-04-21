@@ -22,7 +22,8 @@ const MUMBAI_LOCATIONS = [
 
 export async function GET() {
   try {
-    // Clear existing data
+    // Clear existing data (order matters due to foreign keys)
+    await prisma.inventoryLog.deleteMany();
     await prisma.aidRequest.deleteMany();
     await prisma.resource.deleteMany();
     await prisma.user.deleteMany();
@@ -71,13 +72,30 @@ export async function GET() {
     });
 
     // Create resources
-    await prisma.resource.createMany({
-      data: [
-        { type: "FOOD", quantity: 500, unit: "packets", location: "Mumbai Central Warehouse" },
-        { type: "WATER", quantity: 1000, unit: "liters", location: "Andheri Distribution Hub" },
-        { type: "MEDICINE", quantity: 200, unit: "kits", location: "Sion Hospital Supply" },
-      ],
-    });
+    const resourceData = [
+      { type: "FOOD" as const, quantity: 500, unit: "packets", location: "Mumbai Central Warehouse" },
+      { type: "WATER" as const, quantity: 1000, unit: "liters", location: "Andheri Distribution Hub" },
+      { type: "MEDICINE" as const, quantity: 200, unit: "kits", location: "Sion Hospital Supply" },
+    ];
+
+    const createdResources = [];
+    for (const rData of resourceData) {
+      const resource = await prisma.resource.create({ data: rData });
+      createdResources.push(resource);
+
+      // Create initial inventory log entry for each resource
+      await prisma.inventoryLog.create({
+        data: {
+          resourceId: resource.id,
+          changeType: "ADD",
+          quantityChange: rData.quantity,
+          previousQty: 0,
+          newQty: rData.quantity,
+          reason: `Initial stock provisioned — ${rData.location}`,
+          performedById: admin.id,
+        },
+      });
+    }
 
     // Create aid requests
     const users = [admin, ngo, volunteer, victim];
@@ -102,6 +120,7 @@ export async function GET() {
       users: await prisma.user.count(),
       resources: await prisma.resource.count(),
       aidRequests: await prisma.aidRequest.count(),
+      inventoryLogs: await prisma.inventoryLog.count(),
     };
 
     return NextResponse.json({

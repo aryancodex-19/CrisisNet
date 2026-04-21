@@ -42,20 +42,111 @@ export async function updateAidRequestStatus(
     throw new Error("Unauthorized");
   }
 
-  if (!["ADMIN", "NGO", "VOLUNTEER"].includes(session.user.role)) {
+  const { role } = session.user;
+  if (!["ADMIN", "NGO", "VOLUNTEER"].includes(role)) {
     throw new Error("Insufficient permissions");
   }
 
-  const request = await prisma.aidRequest.update({
+  // Enforce role-based actions
+  if ((status as string) === "VERIFIED" && !["NGO", "ADMIN"].includes(role)) {
+    throw new Error("Only NGOs and ADMINs can verify requests.");
+  }
+  if (status === "DISPATCHED" && role !== "ADMIN") {
+    throw new Error("Only ADMINs can dispatch/approve supplies.");
+  }
+
+  const currentRequest = await prisma.aidRequest.findUnique({
     where: { id },
-    data: { status },
   });
+
+  if (!currentRequest) throw new Error("Request not found");
+
+  // If status is transitioning to DISPATCHED (approved), deduct stock and log
+  if (status === "DISPATCHED" && currentRequest.status !== "DISPATCHED") {
+    const resource = await prisma.resource.findUnique({
+      where: { type: currentRequest.resourceType },
+    });
+
+    if (!resource || resource.quantity < currentRequest.quantityNeeded) {
+      throw new Error(`Insufficient stock for ${currentRequest.resourceType}. Requested: ${currentRequest.quantityNeeded}, Available: ${resource?.quantity || 0}`);
+    }
+
+    const previousQty = resource.quantity;
+    const newQty = previousQty - currentRequest.quantityNeeded;
+
+    await prisma.$transaction([
+      prisma.resource.update({
+        where: { type: currentRequest.resourceType },
+        data: { quantity: { decrement: currentRequest.quantityNeeded } },
+      }),
+      prisma.aidRequest.update({
+        where: { id },
+        data: { status },
+      }),
+      prisma.inventoryLog.create({
+        data: {
+          resourceId: resource.id,
+          changeType: "DEDUCT",
+          quantityChange: currentRequest.quantityNeeded,
+          previousQty,
+          newQty,
+          reason: `Dispatched for aid request at ${currentRequest.locationName || "unknown location"}`,
+          aidRequestId: id,
+          performedById: session.user.id,
+        },
+      }),
+    ]);
+  } else if ((status as string) === "REJECTED" && currentRequest.status === "DISPATCHED") {
+    // Rejected after dispatch — re-add stock and log
+    const resource = await prisma.resource.findUnique({
+      where: { type: currentRequest.resourceType },
+    });
+
+    if (resource) {
+      const previousQty = resource.quantity;
+      const newQty = previousQty + currentRequest.quantityNeeded;
+
+      await prisma.$transaction([
+        prisma.resource.update({
+          where: { type: currentRequest.resourceType },
+          data: { quantity: { increment: currentRequest.quantityNeeded } },
+        }),
+        prisma.aidRequest.update({
+          where: { id },
+          data: { status },
+        }),
+        prisma.inventoryLog.create({
+          data: {
+            resourceId: resource.id,
+            changeType: "ADD",
+            quantityChange: currentRequest.quantityNeeded,
+            previousQty,
+            newQty,
+            reason: `Stock returned — aid request rejected after dispatch`,
+            aidRequestId: id,
+            performedById: session.user.id,
+          },
+        }),
+      ]);
+    } else {
+      await prisma.aidRequest.update({
+        where: { id },
+        data: { status },
+      });
+    }
+  } else {
+    await prisma.aidRequest.update({
+      where: { id },
+      data: { status },
+    });
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/requests");
   revalidatePath("/map");
+  revalidatePath("/resources");
 
-  return request;
+  return { success: true };
 }
 
 export async function getAidRequests(filters?: {

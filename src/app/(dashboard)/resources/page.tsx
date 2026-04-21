@@ -1,4 +1,4 @@
-import { getResources } from "@/app/actions/resources";
+import { getResources, getInventoryLogs } from "@/app/actions/resources";
 import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,11 +18,15 @@ import {
   MapPin,
 } from "lucide-react";
 import { getResourceIcon } from "@/lib/utils";
+import { InventoryManager } from "@/components/inventory-manager";
 
 export const dynamic = "force-dynamic";
 
 export default async function ResourcesPage() {
-  const resources = await getResources();
+  const [resources, inventoryLogs] = await Promise.all([
+    getResources(),
+    getInventoryLogs(50),
+  ]);
   const session = await auth();
 
   const typeDetails: Record<string, { icon: typeof Package; color: string; maxQty: number }> = {
@@ -110,6 +114,12 @@ export default async function ResourcesPage() {
           );
         })}
       </div>
+
+      {/* Inventory Manager (Add Stock + Activity Log) */}
+      <InventoryManager
+        initialLogs={JSON.parse(JSON.stringify(inventoryLogs))}
+        resources={JSON.parse(JSON.stringify(resources))}
+      />
 
       {/* Detailed Table */}
       <Card className="bg-card/90 border-border/50 backdrop-blur-sm">

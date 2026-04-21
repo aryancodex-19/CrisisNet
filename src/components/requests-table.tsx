@@ -114,9 +114,11 @@ export function RequestsTable({
               </SelectTrigger>
               <SelectContent className="bg-muted border-slate-700">
                 <SelectItem value="ALL" className="text-foreground">All Statuses</SelectItem>
-                <SelectItem value="PENDING" className="text-foreground">Pending</SelectItem>
+                <SelectItem value="PENDING" className="text-foreground">Pending NGO Verification</SelectItem>
+                <SelectItem value="VERIFIED" className="text-foreground">Pending Admin Approval</SelectItem>
                 <SelectItem value="DISPATCHED" className="text-foreground">Dispatched</SelectItem>
                 <SelectItem value="FULFILLED" className="text-foreground">Fulfilled</SelectItem>
+                <SelectItem value="REJECTED" className="text-foreground">Rejected</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v || "ALL")}>
@@ -197,13 +199,47 @@ export function RequestsTable({
                   </TableCell>
                   {canUpdateStatus && (
                     <TableCell>
-                      <div className="flex gap-1">
-                        {req.status === "PENDING" && (
+                      <div className="flex gap-1 flex-wrap">
+                        {req.status === "PENDING" && ["NGO", "ADMIN"].includes(session?.user?.role || "") && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleStatusUpdate(req.id, "VERIFIED" as RequestStatus)
+                              }
+                              disabled={isPending && updatingId === req.id}
+                              className="h-7 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                            >
+                              {isPending && updatingId === req.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                "Verify"
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleStatusUpdate(req.id, "REJECTED" as RequestStatus)
+                              }
+                              disabled={isPending && updatingId === req.id}
+                              className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                            >
+                              {isPending && updatingId === req.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                "Reject"
+                              )}
+                            </Button>
+                          </>
+                        )}
+                        {(req.status as string) === "VERIFIED" && session?.user?.role === "ADMIN" && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              handleStatusUpdate(req.id, "DISPATCHED")
+                              handleStatusUpdate(req.id, "DISPATCHED" as RequestStatus)
                             }
                             disabled={isPending && updatingId === req.id}
                             className="h-7 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
@@ -211,7 +247,7 @@ export function RequestsTable({
                             {isPending && updatingId === req.id ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              "Dispatch"
+                              "Approve & Dispatch"
                             )}
                           </Button>
                         )}
@@ -220,7 +256,7 @@ export function RequestsTable({
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              handleStatusUpdate(req.id, "FULFILLED")
+                              handleStatusUpdate(req.id, "FULFILLED" as RequestStatus)
                             }
                             disabled={isPending && updatingId === req.id}
                             className="h-7 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"

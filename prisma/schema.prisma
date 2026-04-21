@@ -23,29 +23,54 @@ enum ResourceType {
 
 enum RequestStatus {
   PENDING
+  VERIFIED
   DISPATCHED
   FULFILLED
+  REJECTED
+}
+
+enum ChangeType {
+  ADD
+  DEDUCT
+  ADJUSTMENT
 }
 
 model User {
-  id           String       @id @default(cuid())
-  name         String
-  email        String       @unique
-  passwordHash String
-  role         Role         @default(VICTIM)
-  phone        String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  aidRequests  AidRequest[]
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(VICTIM)
+  phone         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  aidRequests   AidRequest[]
+  inventoryLogs InventoryLog[]
 }
 
 model Resource {
-  id        String       @id @default(cuid())
-  type      ResourceType @unique
-  quantity  Int
-  unit      String
-  location  String?
-  updatedAt DateTime     @updatedAt
+  id            String         @id @default(cuid())
+  type          ResourceType   @unique
+  quantity      Int
+  unit          String
+  location      String?
+  updatedAt     DateTime       @updatedAt
+  inventoryLogs InventoryLog[]
+}
+
+model InventoryLog {
+  id             String       @id @default(cuid())
+  resourceId     String
+  resource       Resource     @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  changeType     ChangeType
+  quantityChange Int
+  previousQty    Int
+  newQty         Int
+  reason         String?
+  aidRequestId   String?
+  performedById  String
+  performedBy    User         @relation(fields: [performedById], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
 }
 
 model AidRequest {
